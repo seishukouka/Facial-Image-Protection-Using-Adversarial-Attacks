@@ -19,17 +19,6 @@ This repository demonstrates an implementation of adversarial attacks (PGD + LPI
 <!-- ![Overall Architecture](path/to/architecture.png) -->
 
 
-
-## Demo & Generated Results
-
-During training, the Generator outputs are saved periodically and visualized as a GIF animation.  
-- `celeba_adv.gif` illustrates the progression of the generated samples over time.
-
-<!-- Insert actual generated sample images or GIFs here (e.g.): -->
-<!-- ![Sample Generation](path/to/generated_samples.gif) -->
-
-
-
 ## Learning process
 - **train_adversarial.py**  
   1. Loads and reads images (CelebA-HQ)  
