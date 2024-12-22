@@ -1,145 +1,82 @@
-# Facial-Image-Protection-Using-Adversarial-Attacks
+# Deep Convolutional GAN
 
-This repository demonstrates an implementation of adversarial attacks (PGD + LPIPS) on facial images, aimed at **hindering personal identification** by modifying key facial features (eyes, nose, mouth). The modified faces are used as "real" data in DCGAN training, targeting **privacy protection** and **data augmentation** applications.
+PyTorch implementation of DCGAN introduced in the paper: [Unsupervised Representation Learning with Deep Convolutional 
+Generative Adversarial Networks](https://arxiv.org/abs/1511.06434), Alec Radford, Luke Metz, Soumith Chintala.
 
+<p align="center">
+<img src="gen_celeba.gif" title="Generated Data Animation" alt="Generated Data Animation">
+</p>
 
-## Overview
+## Introduction
+Generative Adversarial Networks (GANs) are one of the most popular (and coolest)
+Machine Learning algorithms developed in recent times. They belong to a set of algorithms called generative models, which
+are widely used for unupervised learning tasks which aim to learn the uderlying structure of the given data. As the name
+suggests GANs allow you to generate new unseen data that mimic the actual given real data. However, GANs pose problems in
+training and require carefullly tuned hyperparameters.This paper aims to solve this problem.
 
-- **PGD Attack + LPIPS**  
-  We apply a targeted perturbation only to specified facial regions (e.g., eyes, nose, mouth). The perturbation makes the face embedding close to a specific “target embedding,” while using LPIPS (Learned Perceptual Image Patch Similarity) to limit unnatural distortion.
+DCGAN is one of the most popular and succesful network design for GAN. It mainly composes of convolution layers 
+without max pooling or fully connected layers. It uses strided convolutions and transposed convolutions 
+for the downsampling and the upsampling respectively.
 
-- **NonlinearEmbeddingMixer**  
-  We combine embedding vectors from multiple faces into one target embedding, aiming for a more “diverse” alteration (i.e., to create a face embedding that is a mixture of several individuals).
+**Generator architecture of DCGAN**
+<p align="center">
+<img src="images/Generator.png" title="DCGAN Generator" alt="DCGAN Generator">
+</p>
 
-- **DCGAN (Old Architecture) Re-training**  
-  The adversarially modified faces are fed into a DCGAN as real data. We then observe how the attack influences the Generator and Discriminator during training.
+**Network Design of DCGAN:**
+* Replace all pooling layers with strided convolutions.
+* Remove all fully connected layers.
+* Use transposed convolutions for upsampling.
+* Use Batch Normalization after every layer except after the output layer of the generator and the input layer of the discriminator.
+* Use ReLU non-linearity for each layer in the generator except for output layer use tanh.
+* Use Leaky-ReLU non-linearity for each layer of the disciminator excpet for output layer use sigmoid.
 
+## Hyperparameters for this Implementation
+Hyperparameters are chosen as given in the paper.
+* mini-batch size: 128
+* learning rate: 0.0002
+* momentum term beta1: 0.5
+* slope of leak of LeakyReLU: 0.2
+* For the optimizer Adam (with beta2 = 0.999) has been used instead of SGD as described in the paper.
 
-<!-- You could insert a diagram or sample facial image modifications here, for better illustration (e.g.): -->
-<!-- ![Overall Architecture](path/to/architecture.png) -->
+## Data
+This implementation uses the [CelebA](http://mmlab.ie.cuhk.edu.hk/projects/CelebA.html) dataset. However, any other dataset can
+also be used. Download the data and update the directory location inside the `root` variable in **`utils.py`**.
 
+**CelebA Dataset**
+<p align="center">
+<img src="images/Training_Data.png" title="Training Data" alt="Training Data">
+</p>
 
-## Learning process
-- **train_adversarial.py**  
-  1. Loads and reads images (CelebA-HQ)  
-  2. Performs face landmark detection (dlib)  
-  3. Mixes multiple embeddings via NonlinearEmbeddingMixer  
-  4. Applies PGD attack + LPIPS penalty to partially perturb the face  
-  5. Trains a DCGAN using these perturbed images as real data  
-  6. Includes a training loop plus visualization & saving of generated results  
+## Training
+To train the model, run **`train.py`**. To set the training parametrs, update the values in the `params` dictionary in `train.py`.
+Checkpoints would be saved by default in model directory every 2 epochs. 
+By default, GPU is used for training if available.
 
----
+*Training will take a long time. It took me around 3 hours on a NVIDIA GeForce GTX 1060 GPU. Using a CPU is not recommended.*
 
-# Adversarial Face Protection
+**Loss Curves**
+<p align="center">
+<img src="images/Training_Loss.png" title="Training Loss Curves" alt="Training Loss Curves">
+</p>
+<i>D: Discriminator, G: Generator</i>
 
-Adversarial Face Protection is a research project focused on adversarial attacks and facial protection. This repository includes tools for training and testing adversarial models on CelebA-HQ dataset.
-
-
-## Setup
-
-**Recommended Python version**: 3.8 or higher
-
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/yourname/adversarial-face-protection.git
-cd adversarial-face-protection
+## Generating New Images
+To generate new unseen images, run **`generate.py`**.
+```sh
+python3 generate.py --load_path /path/to/pth/checkpoint --num_output n
 ```
+**Generated Images**
+<p align="center">
+  <i>After Epoch 1:</i> <img src="images/Generated_Epoch_1.png" title="Generated Images after 1st Epoch" alt="Generated Images after 1st Epoch">
+  <i>After Epoch 10:</i> <img src="images/Generated_Epoch_10.png" title="Generated Images after 10th Epoch" alt="Generated Images after 10th Epoch">
+</p>
 
-### 2. Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-> **Note**: Installing `dlib` may trigger a build process. You might need C++ build tools or similar, depending on your environment.
-
-### 3. Prepare the Dataset
-
-- **CelebA-HQ**: The dataset will be automatically downloaded from Hugging Face.
-  - Please note that downloading large datasets can take significant time.
-
-### 4. Facial Landmark Predictor File
-
-Download `shape_predictor_68_face_landmarks.dat.bz2` from the [github](https://github.com/italojs/facial-landmarks-recognition/blob/master/shape_predictor_68_face_landmarks.dat), extract it, and place the `.dat` file in the repository’s root folder.
-
----
-
-## How to Run
-
-Run the following command to start the training:
-
-```bash
-python main.py
-```
-
-### Default Configuration
-
-- Takes the first 10,000 images of CelebA-HQ
-- Selects up to 1,000 samples for training
-- Runs for 20 epochs with a batch size of 32
-
-### Output
-
-- Model checkpoints will be saved in the `model/` directory for each epoch.
-- A final checkpoint named `model_adv0.4_final.pth` is produced at the end.
-- Sample images are periodically generated using a fixed noise vector, saved in `img_list`, and converted into a GIF, `celeba_adv.gif`.
-
----
-
-## Results
-
-### During Training
-
-- Plots of `G_losses` and `D_losses` are displayed.
-- The generated GIF, `celeba_adv.gif`, visualizes the evolution of samples over epochs.
-
-### Key Features
-
-- Adversarial attacks are applied to facial regions (eyes, nose, mouth).
-- LPIPS (Learned Perceptual Image Patch Similarity) enforces a perceptual penalty to keep modifications visually natural.
-
-<!-- Optional: Add visual aids -->
-<!-- ![Loss Curve](path/to/loss_plot.png) -->
-<!-- ![Before & After Attack](path/to/before_after.png) -->
-
----
-
-## Notes
-
-1. **Ethical Use**: This code is for research purposes only. Any unethical or illegal use is strictly prohibited.
-2. **Face Detection Limitations**: 
-   - `dlib`'s face landmark detection may fail or mis-detect in some cases.
-   - The code skips such images. Consider adding more robust error handling if needed.
-3. **High GPU Memory Usage**:
-   - CelebA-HQ images are high-resolution (1024×1024).
-   - If you encounter memory issues, reduce `max_samples` or `bsize` in the configuration.
-
----
-
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
----
-
-## Citation
-
-If you use this code, please cite the following resources:
-
-- FaceNet PyTorch ([facenet_pytorch](https://github.com/timesler/facenet-pytorch))
-- dlib (face landmark detection)
-- LPIPS ([Learned Perceptual Image Patch Similarity](https://github.com/richzhang/PerceptualSimilarity))
-- CelebA-HQ Dataset
-
----
-
-## Contributing
-
-Pull requests and issues are welcome! Feel free to open a PR or issue for:
-
-- Bug reports
-- Feature requests
-- Documentation improvements
-
----
+## References
+1. **Alec Radford, Luke Metz, Soumith Chintala.** *Unsupervised representation learning with deep convolutional 
+generative adversarial networks.*[[arxiv](https://arxiv.org/abs/1511.06434)]
+2. **Ian Goodfellow, Jean Pouget-Abadie, Mehdi Mirza, Bing Xu, David Warde-Farley, 
+Sherjil Ozair, Aaron Courville, Yoshua Bengio.** *Generative adversarial nets.* NIPS 2014 [[arxiv](https://arxiv.org/abs/1406.2661)]
+3. **Ian Goodfellow.** *Tutorial: Generative Adversarial Networks.* NIPS 2016 [[arxiv](https://arxiv.org/abs/1701.00160)]
+4. DCGAN Tutorial. [https://pytorch.org/tutorials/beginner/dcgan_faces_tutorial.html]
+5. PyTorch Docs. [https://pytorch.org/docs/stable/index.html]
