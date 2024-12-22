@@ -33,7 +33,7 @@ Adversarial Face Protection is a research project focused on adversarial attacks
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourname/adversarial-face-protection.git
+git clone https://github.com/seishukouka/adversarial-face-protection.git
 cd adversarial-face-protection
 ```
 
