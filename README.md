@@ -33,7 +33,7 @@ Adversarial Face Protection is a research project focused on adversarial attacks
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/seishukouka/adversarial-face-protection.git
+git clone https://github.com/yourname/adversarial-face-protection.git
 cd adversarial-face-protection
 ```
 
@@ -52,29 +52,41 @@ pip install -r requirements.txt
 
 ### 4. Facial Landmark Predictor File
 
-Download `shape_predictor_68_face_landmarks.dat.bz2` from the [Github](https://github.com/davisking/dlib-models/blob/master/shape_predictor_68_face_landmarks.dat.bz2/), extract it, and place the `.dat` file in the repository’s root folder.
+Download `shape_predictor_68_face_landmarks.dat.bz2` from the [dlib site](http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2), extract it, and place the `.dat` file in the repository’s root folder.
 
 ---
 
 ## How to Run
 
+### Training
+
 Run the following command to start the training:
 
 ```bash
-python3 train_adversarial.py
+python main.py
 ```
 
-### Default Configuration
+#### Default Configuration
 
 - Takes the first 10,000 images of CelebA-HQ
 - Selects up to 1,000 samples for training
 - Runs for 20 epochs with a batch size of 32
 
-### Output
+#### Output
 
 - Model checkpoints will be saved in the `model/` directory for each epoch.
 - A final checkpoint named `model_adv0.4_final.pth` is produced at the end.
 - Sample images are periodically generated using a fixed noise vector, saved in `img_list`, and converted into a GIF, `celeba_adv.gif`.
+
+### Generation
+
+To generate new images using a trained model, run the following command:
+
+```bash
+python3 generate.py -load_path model/your_model.pth -num_output 10
+```
+
+- This will generate 10 images and save them in the `images/` directory.
 
 ---
 
