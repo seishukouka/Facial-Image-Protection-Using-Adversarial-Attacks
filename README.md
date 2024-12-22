@@ -52,7 +52,7 @@ pip install -r requirements.txt
 
 ### 4. Facial Landmark Predictor File
 
-Download `shape_predictor_68_face_landmarks.dat.bz2` from the [dlib site](http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2), extract it, and place the `.dat` file in the repository’s root folder.
+Download `shape_predictor_68_face_landmarks.dat.bz2` from the [Github](https://github.com/davisking/dlib-models/blob/master/shape_predictor_68_face_landmarks.dat.bz2/), extract it, and place the `.dat` file in the repository’s root folder.
 
 ---
 
