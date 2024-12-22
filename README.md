@@ -30,11 +30,8 @@ During training, the Generator outputs are saved periodically and visualized as 
 
 
 
-## File Structure
-. ├── model/ │ ├── model_no_noise.pth # Pre-trained DCGAN model │ └── model_adv0.4_epoch_x.pth # Model checkpoints after adversarial training (per epoch) ├── datasets/ │ └── (CelebA-HQ downloaded via Hugging Face API) ├── shape_predictor_68_face_landmarks.dat ├── requirements.txt └── main.py # Core implementation (includes all steps below)
-
-
-- **main.py**  
+## Learning process
+- **train_adversarial.py**  
   1. Loads and reads images (CelebA-HQ)  
   2. Performs face landmark detection (dlib)  
   3. Mixes multiple embeddings via NonlinearEmbeddingMixer  
