@@ -63,7 +63,7 @@ Download `shape_predictor_68_face_landmarks.dat.bz2` from the [dlib site](http:/
 Run the following command to start the training:
 
 ```bash
-python train_adversarial.py
+python3 train_adversarial.py
 ```
 
 #### Default Configuration
