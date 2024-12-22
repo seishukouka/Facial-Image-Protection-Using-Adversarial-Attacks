@@ -1,0 +1,20 @@
+# PyTorch (GPUを使う場合は公式サイトの指示に従い、CUDA対応版をインストール)
+torch>=1.7.0
+torchvision>=0.8.0
+
+# 顔埋め込みモデル Facenet (InceptionResnetV1)
+facenet-pytorch>=2.5.2
+
+# LPIPS (画像の視覚的類似度指標)
+lpips>=0.1.4
+
+# dlib (顔検出・ランドマーク検出)
+dlib>=19.24.0
+
+# Hugging Face datasets (CelebA-HQデータの読み込み)
+datasets>=2.7.1
+
+# その他必須ライブラリ
+numpy>=1.19.2
+matplotlib>=3.3.2
+Pillow>=9.0.0
