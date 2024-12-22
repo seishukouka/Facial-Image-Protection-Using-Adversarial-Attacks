@@ -4,7 +4,6 @@ import torch
 import torchvision.utils as vutils
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
 import random
 
 from dcgan import Generator
@@ -34,13 +33,13 @@ noise = torch.randn(int(args.num_output), params['nz'], 1, 1, device=device)
 
 # Turn off gradient calculation to speed up the process.
 with torch.no_grad():
-	# Get generated image from the noise vector using
-	# the trained generator.
-    generated_img = netG(noise).detach().cpu()
+    # Get generated image from the noise vector using the trained generator.
+    generated_imgs = netG(noise).detach().cpu()
 
-# Display the generated image.
-plt.axis("off")
-plt.title("Generated Images")
-plt.imshow(np.transpose(vutils.make_grid(generated_img, padding=2, normalize=True), (1,2,0)))
+# Save each image individually
+for i, img in enumerate(generated_imgs):
+    filename = f"images/generated_image_{i+1}.png"  # Save as 'generated_image_1.png', 'generated_image_2.png', etc.
+    vutils.save_image(img, filename, normalize=True)
+    print(f"Saved {filename}")
 
-plt.show()
+print("All images saved successfully!")
