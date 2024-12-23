@@ -54,15 +54,14 @@ pip install -r requirements.txt
 
 Download `shape_predictor_68_face_landmarks.dat.bz2` from the [dlib site](http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2), extract it, and place the `.dat` file in the repository’s root folder.
 
----
 
 ### 5. Pre-trained Model
 
-Download the pre-trained model file using the following command:
+Use the following command to download the pre-trained model files to the `model` directory:
 
 ```bash
 gdown "https://drive.google.com/uc?id=1-QzdRAdZq-jNrDlqWHdQNLnCytAsHC_Y" -O model/model_no_noise.pth
-
+```
 
 ## How to Run
 
