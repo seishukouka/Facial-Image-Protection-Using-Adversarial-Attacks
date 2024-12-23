@@ -58,7 +58,7 @@ Download `shape_predictor_68_face_landmarks.dat.bz2` from the [dlib site](http:/
 ### 5. Pre-trained Model
 
 Use the following command to download the pre-trained model files :
-> **Note**: Make sure to save it to the `model` directory
+> **Note**: Make sure to save it in the `model` directory.
 
 ```bash
 gdown "https://drive.google.com/uc?id=1-QzdRAdZq-jNrDlqWHdQNLnCytAsHC_Y" -O model_no_noise.pth
