@@ -26,10 +26,6 @@ import lpips  # LPIPSモデル
 # ================================
 # 0. グローバル設定 & パラメータ
 # ================================
-# もし Google Colab 等で "Cannot re-initialize CUDA" エラーが出る場合は下記を追加:
-# import multiprocessing
-# multiprocessing.set_start_method('spawn', force=True)
-
 seed = 369
 random.seed(seed)
 torch.manual_seed(seed)
@@ -40,19 +36,22 @@ print("Device:", device)
 
 # DCGAN用パラメータ
 params = {
-    "bsize" :512,         # バッチサイズ少なめ (PGD が重い＋高解像度 => 非常に重い)
-    "nc" : 3,            # カラー画像
-    "nz" : 100,          # ノイズ次元
+    "bsize": 512,         # バッチサイズ
+    "nc": 3,              # カラー画像
+    "nz": 100,            # ノイズ次元
     "ngf": 64,
     "ndf": 64,
-    "nepochs": 20,        # 少なめの例
+    "nepochs": 20,        # エポック数
     "lr": 0.0002,
     "beta1": 0.5,
     "save_epoch": 1
 }
 
-# PGD + LPIPS 攻撃用パラメータ
+# ===== ここを実験ごとに変える =====
 epsilon = 0.4
+noise_ratio = 0.1
+# ================================
+
 pgd_steps = 30
 pgd_alpha = epsilon / pgd_steps
 lambda_hvs = 0.1
@@ -70,10 +69,9 @@ lpips_model = lpips.LPIPS(net='alex').to(device)
 print("Loading CelebA-HQ from Hugging Face...")
 from datasets import load_dataset
 hf_dataset = load_dataset("Ryan-sjtu/celebahq-caption", split="train")
-# 例として 1000 枚だけ使用 (重い場合はさらに減らす)
+# 例として 10000 枚だけ使用 (重い場合はさらに減らす)
 hf_dataset = hf_dataset.select(range(10000))
 print("Dataset loaded:", len(hf_dataset))
-
 
 # ================================
 # 1. ノイズ付与用関数
@@ -170,12 +168,13 @@ class AdvCelebAHQDataset(Dataset):
     3) [好きなサイズにリサイズ & [-1,1] 正規化]
     の流れを実行する。
     """
-    def __init__(self, hf_dataset, transform_final=None, max_samples=None):
+    def __init__(self, hf_dataset, transform_final=None, max_samples=None, noise_ratio=1.0):
         super().__init__()
         self.dataset = hf_dataset
         self.transform_final = transform_final
         self.mixer = NonlinearEmbeddingMixer(num_embs=10).to(device)
         self.max_samples = max_samples if max_samples else len(hf_dataset)
+        self.noise_ratio = noise_ratio
 
     def __len__(self):
         return min(self.max_samples, len(self.dataset))
@@ -187,36 +186,38 @@ class AdvCelebAHQDataset(Dataset):
 
         # [0,1] で numpy 化
         img_np = np.array(pil_img, dtype=np.float32)/255.0
-        h, w, _ = img_np.shape
 
-        # 顔ランドマーク
-        landmarks = detect_landmarks(img_np)
-        if landmarks is not None:
-            # ランダムに10人分のembedding
-            target_samples = [random.choice(self.dataset) for _ in range(10)]
-            target_embs = []
-            with torch.no_grad():
-                for ts in target_samples:
-                    t_pil = ts['image'].convert('RGB')
-                    t_np  = np.array(t_pil, dtype=np.float32)/255.0
-                    t_in  = torch.tensor(t_np.transpose(2,0,1), device=device).unsqueeze(0)*2 -1
-                    emb   = face_model(t_in)
-                    target_embs.append(emb)
-            with torch.no_grad():
-                comp_emb = self.mixer(target_embs)
+        # ノイズ付与するかどうか決定
+        if random.random() < self.noise_ratio:
+            landmarks = detect_landmarks(img_np)
+            if landmarks is not None:
+                # ランダムに10人分のembedding
+                target_samples = [random.choice(self.dataset) for _ in range(10)]
+                target_embs = []
+                with torch.no_grad():
+                    for ts in target_samples:
+                        t_pil = ts['image'].convert('RGB')
+                        t_np  = np.array(t_pil, dtype=np.float32)/255.0
+                        t_in  = torch.tensor(t_np.transpose(2,0,1), device=device).unsqueeze(0)*2 -1
+                        emb   = face_model(t_in)
+                        target_embs.append(emb)
 
-            # 目/鼻/口に対して攻撃
-            left_eye_mask  = get_mask(landmarks, h, w, 36, 42)
-            right_eye_mask = get_mask(landmarks, h, w, 42, 48)
-            nose_mask      = get_mask(landmarks, h, w, 27, 36)
-            mouth_mask     = get_mask(landmarks, h, w, 48, 68)
+                with torch.no_grad():
+                    comp_emb = self.mixer(target_embs)
 
-            adv_img = img_np.copy()
-            for region_mask in [left_eye_mask, right_eye_mask, nose_mask, mouth_mask]:
-                adv_region = pgd_attack_lpips(adv_img, region_mask, comp_emb)
-                adv_img[region_mask] = adv_region[region_mask]
+                # 目/鼻/口に対して攻撃
+                h, w, _ = img_np.shape
+                left_eye_mask  = get_mask(landmarks, h, w, 36, 42)
+                right_eye_mask = get_mask(landmarks, h, w, 42, 48)
+                nose_mask      = get_mask(landmarks, h, w, 27, 36)
+                mouth_mask     = get_mask(landmarks, h, w, 48, 68)
 
-            img_np = adv_img  # ノイズ付与後の画像
+                adv_img = img_np.copy()
+                for region_mask in [left_eye_mask, right_eye_mask, nose_mask, mouth_mask]:
+                    adv_region = pgd_attack_lpips(adv_img, region_mask, comp_emb)
+                    adv_img[region_mask] = adv_region[region_mask]
+
+                img_np = adv_img
 
         # リサイズ & [-1,1] 正規化
         pil_adv = Image.fromarray((img_np*255).astype(np.uint8))
@@ -236,8 +237,9 @@ transform_final = transforms.Compose([
 
 train_dataset = AdvCelebAHQDataset(hf_dataset,
                                    transform_final=transform_final,
-                                   max_samples=1000)  # 例
-# ★ num_workers=0 でマルチプロセス回避 もしくは spawn にする
+                                   max_samples=10000,
+                                   noise_ratio=noise_ratio)
+
 dataloader = DataLoader(train_dataset,
                         batch_size=params["bsize"],
                         shuffle=True,
@@ -258,7 +260,7 @@ class GeneratorOld(nn.Module):
         self.tconv4 = nn.ConvTranspose2d(128, 64, 4, 2, 1, bias=False)
         self.bn4 = nn.BatchNorm2d(64)
         self.tconv5 = nn.ConvTranspose2d(64, 3, 4, 2, 1, bias=False)
-    
+
     def forward(self, input):
         x = F.relu(self.bn1(self.tconv1(input)))
         x = F.relu(self.bn2(self.tconv2(x)))
@@ -313,10 +315,14 @@ D_losses = []
 # ================================
 print("Starting Training Loop...")
 
+# ==== ここで保存先ディレクトリを作成 ====
+save_dir = f"model/epsilon_{epsilon}_noise_{noise_ratio}"
+os.makedirs(save_dir, exist_ok=True)
+# =======================================
+
 iters = 0
 for epoch in range(params["nepochs"]):
     for i, (adv_data, _) in enumerate(dataloader):
-        # adv_data: すでに「大サイズ => ノイズ付与 => 64x64にリサイズ」後のTensor, [-1,1]
         adv_data = adv_data.to(device)
         b_size = adv_data.size(0)
 
@@ -371,21 +377,23 @@ for epoch in range(params["nepochs"]):
             'optimizerG': optimizerG.state_dict(),
             'optimizerD': optimizerD.state_dict(),
             'params': params
-        }, f"model/model_adv0.4_epoch_{epoch}.pth")
+        }, f"{save_dir}/model_adv_ep{epoch}.pth")  # ←保存パスを変更
 
 # ================================
 # 5. 結果の可視化・保存
 # ================================
+
+# 最終モデルの保存
 torch.save({
     'generator': netG.state_dict(),
     'discriminator': netD.state_dict(),
     'optimizerG': optimizerG.state_dict(),
     'optimizerD': optimizerD.state_dict(),
     'params': params
-}, "model/model_adv0.4_final.pth")
+}, f"{save_dir}/model_adv_final.pth")
 
 plt.figure(figsize=(10,5))
-plt.title("G and D Loss During Adversarial Data Training (Old DCGAN)")
+plt.title(f"G and D Loss (epsilon={epsilon}, noise_ratio={noise_ratio})")
 plt.plot(G_losses,label="G")
 plt.plot(D_losses,label="D")
 plt.xlabel("iterations")
@@ -398,4 +406,6 @@ plt.axis("off")
 ims = [[plt.imshow(np.transpose(i,(1,2,0)), animated=True)] for i in img_list]
 anim = animation.ArtistAnimation(fig, ims, interval=1000, repeat_delay=1000, blit=True)
 plt.show()
-anim.save("celeba_adv.gif", dpi=80, writer="imagemagick")
+
+# GIFも同じディレクトリに出力
+anim.save(f"{save_dir}/celeba_adv.gif", dpi=80, writer="imagemagick")
